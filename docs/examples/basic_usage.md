@@ -263,6 +263,11 @@ for r in results:
           f"({r['fully_paid']}/{r['total_invoices']} invoices)")
 ```
 
-## Conclusion
+## Next Steps: AI Agent Integration
 
-The MCP-Odoo connector provides a powerful interface for AI agents to interact with Odoo accounting data. By following these examples, you can implement sophisticated financial analysis workflows that leverage both the structured data from Odoo and the natural language capabilities of AI agents. 
+For integrating MCP-Odoo with AI agents (LLMs) using frameworks like LangGraph, see our dedicated guides:
+
+- [AI Agent Integration](ai_agent_integration.md) - Comprehensive guide to connecting MCP-Odoo with LLMs
+- [Simple Odoo Agent](simple_odoo_agent.py) - Interactive Python script for testing MCP-Odoo with AI agents
+
+These examples demonstrate how to combine the power of Odoo's data with modern AI capabilities for enhanced financial analysis and reporting. 
