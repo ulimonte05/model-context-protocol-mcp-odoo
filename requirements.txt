@@ -1,0 +1,9 @@
+# FastMCP
+fastmcp
+
+# Config management
+python-dotenv
+pydantic
+
+# Async support
+asyncio
