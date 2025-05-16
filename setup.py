@@ -12,7 +12,8 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/yourtechtribe/model-context-protocol-mcp-odoo",
-    packages=find_packages(),
+    packages=['mcp_odoo_public'] + find_packages(),
+    package_dir={'mcp_odoo_public': '.'},
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
@@ -30,7 +31,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "mcp-odoo=mcp_odoo_public.__main__:main",
+            "mcp-odoo = mcp_odoo_public.__main__:main",
         ],
     },
 ) 

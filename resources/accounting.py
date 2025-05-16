@@ -28,6 +28,43 @@ class PaymentFilter(BaseModel):
     limit: Optional[int] = 100
     invoice_id: Optional[int] = None  # To filter payments for a specific invoice
 
+# Models for new request/response types
+class SaleOrderFilter(BaseModel):
+    """Filter parameters for sales order listing"""
+    partner_id: Optional[int] = None
+    state: Optional[str] = None  # e.g., 'draft', 'sent', 'sale', 'done', 'cancel'
+    date_from: Optional[str] = None # Order date
+    date_to: Optional[str] = None   # Order date
+    limit: Optional[int] = 100
+
+class SubscriptionFilter(BaseModel):
+    """Filter parameters for subscription listing"""
+    partner_id: Optional[int] = None
+    state: Optional[str] = None # e.g., 'draft', 'open', 'pending', 'closed', 'cancelled'
+    template_id: Optional[int] = None
+    date_from: Optional[str] = None # Start date
+    date_to: Optional[str] = None   # Start date
+    limit: Optional[int] = 100
+
+class ProjectFilter(BaseModel):
+    """Filter parameters for project listing"""
+    partner_id: Optional[int] = None
+    user_id: Optional[int] = None # Project manager
+    name: Optional[str] = None # Filter by project name (partial match)
+    active: Optional[bool] = None # Filter by active status
+    limit: Optional[int] = 100
+
+class TaskFilter(BaseModel):
+    """Filter parameters for task listing"""
+    project_id: Optional[int] = None # Project ID to filter tasks for
+    stage_id: Optional[int] = None
+    user_id: Optional[int] = None # Assignee
+    partner_id: Optional[int] = None
+    date_deadline_from: Optional[str] = None
+    date_deadline_to: Optional[str] = None
+    active: Optional[bool] = None # Filter by active status
+    limit: Optional[int] = 100
+
 # Helper formatting functions
 def format_invoice(invoice: Dict[str, Any]) -> Dict[str, Any]:
     """Format invoice data for better presentation"""
@@ -77,6 +114,117 @@ def format_payment(payment: Dict[str, Any]) -> Dict[str, Any]:
         "currency": payment.get("currency_id", [False, ""])[1],
         "reconciled_invoice_ids": payment.get("reconciled_invoice_ids", []),
         "payment_method": payment.get("payment_method_id", [False, ""])[1]
+    }
+
+def format_sale_order(order: Dict[str, Any]) -> Dict[str, Any]:
+    """Format sale order data for better presentation"""
+    return {
+        "id": order["id"],
+        "name": order["name"],
+        "partner": {
+            "id": order["partner_id"][0],
+            "name": order["partner_id"][1]
+        } if order.get("partner_id") else None,
+        "date_order": order.get("date_order", ""),
+        "amount_total": order.get("amount_total", 0.0),
+        "currency": order.get("currency_id", [False, ""])[1] if order.get("currency_id") else "",
+        "state": order.get("state", ""),
+        "commitment_date": order.get("commitment_date", None),
+        "order_line_count": len(order.get("order_line", [])), # Number of lines based on provided IDs
+        "salesperson": {
+             "id": order["user_id"][0],
+             "name": order["user_id"][1]
+        } if order.get("user_id") else None,
+        "team": {
+            "id": order["team_id"][0],
+            "name": order["team_id"][1]
+        } if order.get("team_id") else None,
+    }
+
+def format_subscription(subscription: Dict[str, Any]) -> Dict[str, Any]:
+    """Format subscription data for better presentation"""
+    return {
+        "id": subscription["id"],
+        "name": subscription.get("name", subscription.get("code", "")),
+        "code": subscription.get("code", ""),
+        "partner": {
+            "id": subscription["partner_id"][0],
+            "name": subscription["partner_id"][1]
+        } if subscription.get("partner_id") else None,
+        "template": {
+            "id": subscription["template_id"][0],
+            "name": subscription["template_id"][1]
+        } if subscription.get("template_id") else None,
+        "date_start": subscription.get("date_start", ""),
+        "date_end": subscription.get("date", None), # In Odoo 'sale.subscription', 'date' is often the end date
+        "recurring_next_date": subscription.get("recurring_next_date", None),
+        "stage": {
+            "id": subscription["stage_id"][0],
+            "name": subscription["stage_id"][1]
+        } if subscription.get("stage_id") else None,
+        "state": subscription.get("state", ""), # Fallback or specific state field
+        "recurring_total": subscription.get("recurring_total", 0.0), # Or amount_total
+        "currency": subscription.get("currency_id", [False, ""])[1] if subscription.get("currency_id") else "",
+    }
+
+def format_project(project: Dict[str, Any]) -> Dict[str, Any]:
+    """Format project data for better presentation"""
+    return {
+        "id": project["id"],
+        "name": project["name"],
+        "partner": { # Customer
+            "id": project["partner_id"][0],
+            "name": project["partner_id"][1]
+        } if project.get("partner_id") else None,
+        "project_manager": {
+            "id": project["user_id"][0],
+            "name": project["user_id"][1]
+        } if project.get("user_id") else None,
+        "task_count": project.get("task_count", 0),
+        "active": project.get("active", True),
+        "date_start": project.get("date_start", None),
+        "date_end": project.get("date", None), # In Odoo 'project.project', 'date' can be the end date
+        "privacy_visibility": project.get("privacy_visibility"),
+        "label_tasks": project.get("label_tasks", "Tasks"),
+        # Projects might use stages or a specific state field; for now, returning what's common
+        "allow_timesheets": project.get("allow_timesheets", False),
+        "company": {
+            "id": project["company_id"][0],
+            "name": project["company_id"][1]
+        } if project.get("company_id") else None,
+    }
+
+def format_task(task: Dict[str, Any]) -> Dict[str, Any]:
+    """Format project task data for better presentation"""
+    return {
+        "id": task["id"],
+        "name": task["name"],
+        "project": {
+            "id": task["project_id"][0],
+            "name": task["project_id"][1]
+        } if task.get("project_id") else None,
+        "stage": {
+            "id": task["stage_id"][0],
+            "name": task["stage_id"][1]
+        } if task.get("stage_id") else None,
+        "assignees": [
+            {"id": user[0], "name": user[1]} for user in task.get("user_ids", [])
+        ] if task.get("user_ids") and isinstance(task.get("user_ids"), list) and task.get("user_ids")[0] is not False else [], # Ensure user_ids is a list of tuples/lists
+        "partner": { # Customer associated with task
+            "id": task["partner_id"][0],
+            "name": task["partner_id"][1]
+        } if task.get("partner_id") else None,
+        "date_deadline": task.get("date_deadline", None),
+        "date_assign": task.get("date_assign", None),
+        "date_last_stage_update": task.get("date_last_stage_update", None),
+        "progress": task.get("progress", 0.0),
+        "description_text": task.get("description", ""), # Text version of description
+        "priority": task.get("priority", ""), # '0' (Low), '1' (Normal), '2' (High), '3' (Urgent)
+        "active": task.get("active", True),
+        "parent_task": {
+            "id": task["parent_id"][0],
+            "name": task["parent_id"][1]
+        } if task.get("parent_id") else None,
     }
 
 # MCP tools for accounting functionality
@@ -878,4 +1026,223 @@ async def trace_account_flow(ctx: Context, from_account: str, to_account: str, d
         return result
     except Exception as e:
         await ctx.error(f"Error analyzing accounting flow: {str(e)}")
+        return {"error": str(e)}
+
+@mcp.tool()
+async def list_sales_orders(ctx: Context, partner_id: Optional[int] = None,
+                            state: Optional[str] = None,
+                            date_from: Optional[str] = None,
+                            date_to: Optional[str] = None,
+                            limit: Optional[int] = 100) -> List[Dict[str, Any]]:
+    """
+    List sales orders with optional filtering.
+    
+    Args:
+        partner_id: Filter by specific customer ID
+        state: Filter by sales order state (e.g., 'draft', 'sent', 'sale', 'done', 'cancel')
+        date_from: Filter orders from this date (order date, format: YYYY-MM-DD)
+        date_to: Filter orders until this date (order date, format: YYYY-MM-DD)
+        limit: Maximum number of orders to return
+        
+    Returns:
+        List of sales orders
+    """
+    domain = []
+    if partner_id:
+        domain.append(("partner_id", "=", partner_id))
+    if state:
+        domain.append(("state", "=", state))
+    if date_from:
+        domain.append(("date_order", ">=", date_from))
+    if date_to:
+        domain.append(("date_order", "<=", date_to))
+        
+    odoo_client = await get_odoo_client_from_context(ctx)
+    fields = [
+        "id", "name", "partner_id", "date_order", "amount_total", "state", 
+        "currency_id", "commitment_date", "order_line", "user_id", "team_id"
+    ]
+    
+    try:
+        await ctx.info(f"Fetching sales orders with domain: {domain}")
+        orders = await odoo_client.execute_kw(
+            "sale.order", "search_read",
+            [domain],
+            {"fields": fields, "limit": limit, "order": "date_order DESC"}
+        )
+        return [format_sale_order(order) for order in orders]
+    except Exception as e:
+        await ctx.error(f"Error fetching sales orders: {str(e)}")
+        return {"error": str(e)}
+
+@mcp.tool()
+async def list_subscriptions(ctx: Context, partner_id: Optional[int] = None,
+                             state: Optional[str] = None, # e.g. sale.subscription stage code or state field
+                             template_id: Optional[int] = None,
+                             date_from: Optional[str] = None, # Start date
+                             date_to: Optional[str] = None,   # Start date
+                             limit: Optional[int] = 100) -> List[Dict[str, Any]]:
+    """
+    List subscriptions (recurrent sales) with optional filtering.
+    
+    Args:
+        partner_id: Filter by specific customer ID
+        state: Filter by subscription state/stage code (e.g., 'draft', 'open', 'pending', 'closed')
+        template_id: Filter by subscription template ID
+        date_from: Filter subscriptions starting from this date (format: YYYY-MM-DD)
+        date_to: Filter subscriptions starting until this date (format: YYYY-MM-DD)
+        limit: Maximum number of subscriptions to return
+        
+    Returns:
+        List of subscriptions
+    """
+    domain = []
+    if partner_id:
+        domain.append(("partner_id", "=", partner_id))
+    if state:
+        # Odoo subscriptions often use stage_id.code or a 'state' field.
+        # Assuming 'state' for simplicity, or client needs to know stage code.
+        # A more robust filter might involve searching stage_id.code or name.
+        domain.append(("state", "=", state)) 
+    if template_id:
+        domain.append(("template_id", "=", template_id))
+    if date_from:
+        domain.append(("date_start", ">=", date_from))
+    if date_to:
+        domain.append(("date_start", "<=", date_to))
+        
+    odoo_client = await get_odoo_client_from_context(ctx)
+    fields = [
+        "id", "name", "code", "partner_id", "template_id", "date_start", "date", # 'date' is end_date
+        "recurring_next_date", "stage_id", "state", "recurring_total", "currency_id"
+    ]
+    
+    try:
+        await ctx.info(f"Fetching subscriptions with domain: {domain}")
+        subscriptions = await odoo_client.execute_kw(
+            "sale.subscription", "search_read", # Assumes 'sale.subscription' model exists
+            [domain],
+            {"fields": fields, "limit": limit, "order": "date_start DESC"}
+        )
+        return [format_subscription(sub) for sub in subscriptions]
+    except Exception as e:
+        # Check if the error is due to the model not existing
+        if "sale.subscription" in str(e) and ("model" in str(e).lower() or "object" in str(e).lower()):
+            await ctx.error(f"Error fetching subscriptions: {str(e)}. Model 'sale.subscription' might not be installed.")
+            return {"error": f"Model 'sale.subscription' not found. Ensure the Subscriptions app is installed in Odoo. Details: {str(e)}"}
+        await ctx.error(f"Error fetching subscriptions: {str(e)}")
+        return {"error": str(e)}
+
+@mcp.tool()
+async def list_projects(ctx: Context, partner_id: Optional[int] = None,
+                        user_id: Optional[int] = None,
+                        name: Optional[str] = None,
+                        active: Optional[bool] = None,
+                        limit: Optional[int] = 100) -> List[Dict[str, Any]]:
+    """
+    List projects with optional filtering.
+    
+    Args:
+        partner_id: Filter by customer ID associated with the project
+        user_id: Filter by project manager (user ID)
+        name: Filter by project name (partial match, case-insensitive)
+        active: Filter by active status (True for active, False for archived)
+        limit: Maximum number of projects to return
+        
+    Returns:
+        List of projects
+    """
+    domain = []
+    if partner_id:
+        domain.append(("partner_id", "=", partner_id))
+    if user_id:
+        domain.append(("user_id", "=", user_id))
+    if name:
+        domain.append(("name", "ilike", name))
+    if active is not None:
+        domain.append(("active", "=", active))
+    else: # Default to active projects if not specified
+        domain.append(("active", "=", True))
+
+
+    odoo_client = await get_odoo_client_from_context(ctx)
+    fields = [
+        "id", "name", "partner_id", "user_id", "task_count", "active", 
+        "date_start", "date", "privacy_visibility", "label_tasks", "allow_timesheets", "company_id"
+    ]
+    
+    try:
+        await ctx.info(f"Fetching projects with domain: {domain}")
+        projects = await odoo_client.execute_kw(
+            "project.project", "search_read",
+            [domain],
+            {"fields": fields, "limit": limit, "order": "name ASC"}
+        )
+        return [format_project(project) for project in projects]
+    except Exception as e:
+        await ctx.error(f"Error fetching projects: {str(e)}")
+        return {"error": str(e)}
+
+@mcp.tool()
+async def list_project_tasks(ctx: Context, project_id: Optional[int] = None,
+                             stage_id: Optional[int] = None,
+                             user_id: Optional[int] = None, # Assignee
+                             partner_id: Optional[int] = None,
+                             date_deadline_from: Optional[str] = None,
+                             date_deadline_to: Optional[str] = None,
+                             active: Optional[bool] = None,
+                             limit: Optional[int] = 100) -> List[Dict[str, Any]]:
+    """
+    List project tasks with optional filtering.
+    
+    Args:
+        project_id: Filter tasks for a specific project ID. If None, lists tasks across all accessible projects.
+        stage_id: Filter by task stage ID (project.task.type)
+        user_id: Filter by assigned user ID (searches in user_ids many2many field)
+        partner_id: Filter by customer ID associated with the task
+        date_deadline_from: Filter tasks with deadline from this date (format: YYYY-MM-DD)
+        date_deadline_to: Filter tasks with deadline until this date (format: YYYY-MM-DD)
+        active: Filter by active status (True for active, False for archived)
+        limit: Maximum number of tasks to return
+        
+    Returns:
+        List of project tasks
+    """
+    domain = []
+    if project_id:
+        domain.append(("project_id", "=", project_id))
+    if stage_id:
+        domain.append(("stage_id", "=", stage_id))
+    if user_id: # For many2many 'user_ids'
+        domain.append(("user_ids", "in", [user_id]))
+    if partner_id:
+        domain.append(("partner_id", "=", partner_id))
+    if date_deadline_from:
+        domain.append(("date_deadline", ">=", date_deadline_from))
+    if date_deadline_to:
+        domain.append(("date_deadline", "<=", date_deadline_to))
+    if active is not None:
+        domain.append(("active", "=", active))
+    else: # Default to active tasks if not specified
+        domain.append(("active", "=", True))
+
+    odoo_client = await get_odoo_client_from_context(ctx)
+    fields = [
+        "id", "name", "project_id", "stage_id", "user_ids", "partner_id", 
+        "date_deadline", "date_assign", "date_last_stage_update",
+        "progress", 
+        "description", "priority", "active",
+        "parent_id"
+    ]
+    
+    try:
+        await ctx.info(f"Fetching project tasks with domain: {domain}")
+        tasks = await odoo_client.execute_kw(
+            "project.task", "search_read",
+            [domain],
+            {"fields": fields, "limit": limit, "order": "priority DESC, date_deadline ASC, name ASC"}
+        )
+        return [format_task(task) for task in tasks]
+    except Exception as e:
+        await ctx.error(f"Error fetching project tasks: {str(e)}")
         return {"error": str(e)} 
